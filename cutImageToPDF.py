@@ -1,44 +1,53 @@
 import sys
 from PIL import Image
-import os
-
 Image.MAX_IMAGE_PIXELS = 50000000000
-
 import os
-mergeImages = []
-currCount = 0
-for file in os.listdir(os.getcwd()):
-    if file.endswith(".png"):
-        print(currCount)
-        mergeImages.append(file)
-    currCount += 1
-mergeImages = sorted(mergeImages)
-print(mergeImages)
 
-input()
 
-images = [Image.open(x) for x in mergeImages]
-# images = [Image.open("akpg0F.png")]
-# im = Image.open("akpg1F.png")
+def cutImages(mergeImages):
+    images = [Image.open(x) for x in mergeImages]
 
-currPg = 1
-for im in images:
-    width, height = im.size
+    # The Height the images will be cut at
+    cutHeight = 1122
+    # currPage is used as a counter to name files
+    currPg = 1
+    for im in images:
+        # This loop will cut an image by cutHeight and save the crop
+        # when it cannot crop a full size it will terminate on that last iteration.
+        width, height = im.size
 
-    if height > 1122:
-        currHeight = 0
-        while height > 1122:
-            print(height, currHeight, currHeight+1122)
-            im1 = im.crop((0, currHeight, width, currHeight+1122))
+        if height > cutHeight:
+            currHeight = 0
+            while height > cutHeight:
+                print(height, currHeight, currHeight + cutHeight)
+                im1 = im.crop((0, currHeight, width, currHeight + cutHeight))
+                im1.save(os.getcwd() + "/book/" + str(currPg) + ".png")
+                currHeight += cutHeight
+                height -= cutHeight
+                currPg += 1
+            im1 = im.crop((0, currHeight, width, currHeight + cutHeight))
             im1.save(os.getcwd() + "/book/" + str(currPg) + ".png")
-            currHeight += 1122
-            height -= 1122
             currPg += 1
-        im1 = im.crop((0, currHeight, width, currHeight+1122))
-        im1.save(os.getcwd() + "/book/" + str(currPg) + ".png")
-        currPg += 1
-    else:
-        currHeight = 0
-        im1 = im.crop((0, currHeight, width, currHeight+1122))
-        im1.save(os.getcwd() + "/book/" + str(currPg) + ".png")
-        currPg += 1
+        else:
+            currHeight = 0
+            im1 = im.crop((0, currHeight, width, currHeight + cutHeight))
+            im1.save(os.getcwd() + "/book/" + str(currPg) + ".png")
+            currPg += 1
+
+def gatherImageNames(dir):
+    mergeImages = []
+    currCount = 0
+    for file in os.listdir(os.getcwd() + "/" + dir):
+        if file.endswith(".png"):
+            print(currCount)
+            mergeImages.append(file)
+        currCount += 1
+
+    #This file works only with numbered name images, to properly sort ex:1.png is first page
+    mergeImages = sorted(mergeImages)
+    return mergeImages
+
+mergeImages = gatherImageNames("book")
+print(mergeImages)
+input("Start Cropping above images")
+cutImages(mergeImages)
