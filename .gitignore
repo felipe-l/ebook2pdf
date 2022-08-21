@@ -2,3 +2,6 @@ book/
 aircraftPropulsion/
 browserId.json
 cookies.pkl
+geckodriver.log
+keepBrowserOpen.py
+test.py

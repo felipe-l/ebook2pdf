@@ -47,5 +47,5 @@ def getSession():
         pass
 
 
-
-getSession()
+#
+# getSession()

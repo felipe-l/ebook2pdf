@@ -13,26 +13,45 @@ Image.MAX_IMAGE_PIXELS = 5000000000
 
 #!TODO Save book pngs in dedicated folder
 
-def cropBookPage(name, saveName):
+def openBrowser():
+    options = Options()
+    ua = UserAgent()
+    userAgent = ua.random
+    print(userAgent)
+    options.add_experimental_option("excludeSwitches", ["enable-automation"])
+    options.add_experimental_option('useAutomationExtension', False)
+    options.add_argument('--disable-blink-features=AutomationControlled')
+    options.add_argument("--start-maximized");
+
+    # Recommended: This option is useful to avoid ban, saves cookies in profile
+    options.add_argument(r"--user-data-dir=C:\Users\pipec\AppData\Local\Google\Chrome\User Data")  # e.g. C:\Users\You\AppData\Local\Google\Chrome\User Data
+    options.add_argument(r'--profile-directory=Profile3')  # e.g. Profile 3
+
+    options.add_argument(f'user-agent={userAgent}')
+    driver = webdriver.Chrome(chrome_options=options)
+    driver.get("https://chegg.com")
+    input("SIGN IN TO CHEGG, GO TO FIRST PAGE OF BOOK AND MAXIMIZE WINDOW, press enter when finished")
+    return driver
+
+def cropBookPage(fileName, saveName, bookName):
     from PIL import Image
 
-    # Opens a image in RGB mode
-    im = Image.open(name)
+    im = Image.open(os.getcwd() + "/" + bookName + "/png/" + fileName)
     width, height = im.size
+    viewportWidth = 1920
     # Setting the points for cropped image
-    left = 465
+    left = (viewportWidth - 990)/2
     top = 0
-    right = width-465
+    right = width-((viewportWidth - 990)/2)
     bottom = height
 
     # Cropped image of above dimension
     # (It will not change original image)
     im1 = im.crop((left, top, right, bottom))
-    im1.save(saveName)
-    os.remove(name)
-    #im1.show()
+    im1.save(os.getcwd() + "/" + bookName + "/png/" + saveName)
+    os.remove(os.getcwd() + "/" + bookName + "/png/" + fileName)
 
-def fullpage_screenshot(driver, file, heightScroll):
+def fullpage_screenshot(driver, file, heightScroll, bookName):
     print("Starting chrome full page screenshot workaround ...")
 
     screenWidth = 1920
@@ -41,7 +60,9 @@ def fullpage_screenshot(driver, file, heightScroll):
     #total_height = driver.execute_script("return document.body.parentNode.scrollHeight")
     total_height = int(heightScroll)
     if total_height < 969:
+        #For pages smaller than viewport
         total_height = 969
+
     #viewport_width = driver.execute_script("return document.body.clientWidth")
     viewport_width = screenWidth
     #viewport_height = driver.execute_script("return window.innerHeight")
@@ -99,51 +120,45 @@ def fullpage_screenshot(driver, file, heightScroll):
         part = part + 1
         previous = rectangle
 
-    stitched_image.save(file)
+    print(file)
+    stitched_image.save(os.getcwd() + "/" + bookName + "/png/" + file)
+
     driver.execute_script("""
     var allButtons = document.querySelectorAll("button");
     allButtons[allButtons.length-1].click();
     """)
+
     print("Finishing chrome full page screenshot workaround...")
-    fileName = file.split(".")[0]
-    cropBookPage(file, fileName + "F" + ".png")
+
+    fileName = file.split("temp.")[0]
+    cropBookPage(file, fileName + ".png", bookName)
     time.sleep(5)
     return True
 
 
-def exportCookies(driver):
-    pickle.dump(driver.get_cookies(), open("cookies.pkl", "wb"))
+def takeScreenshot(bookName, startingPage):
+    if not os.path.exists(os.getcwd() + "/" + bookName):
+        # if the demo_folder directory is not present
+        # then create it.
+        os.makedirs(os.getcwd() + "/" + bookName)
+        os.makedirs(os.getcwd() + "/" + bookName + "/png")
+        os.makedirs(os.getcwd() + "/" + bookName + "/pngTrim")
+        os.makedirs(os.getcwd() + "/" + bookName + "/pdf")
 
-def importCookies(driver):
-    cookies = pickle.load(open("cookies.pkl", "rb"))
-    for cookie in cookies:
-        driver.add_cookie(cookie)
 
+    # # Opening JSON file
+    # with open('browserId.json', 'r') as openfile:
+    #     browser = json.load(openfile)
+    # url = browser["url"]
+    # session_id = browser["session_id"]
+    #
+    # driver = webdriver.Remote(command_executor=url, desired_capabilities={})
+    # driver.close()
+    # driver.session_id = session_id
 
+    driver = openBrowser()
 
-def takeScreenshot():
-    # cropBookPage()
-    # input()
-
-    # Opening JSON file
-    with open('browserId.json', 'r') as openfile:
-        # Reading from json file
-        browser = json.load(openfile)
-    url = browser["url"]
-    session_id = browser["session_id"]
-
-    driver = webdriver.Remote(command_executor=url, desired_capabilities={})
-    driver.close()
-    driver.session_id = session_id
-
-    #importCookies(driver)
-
-    #driver.get('https://www.chegg.com/reader/9781119718673/3--%7B%22dataIndex%22%3A5%2C%22childIndex%22%3A0%2C%22offset%22%3A0%7D/')
-
-    #exportCookies(driver)
-    #driver.get("https://google.com")
-    input()
-    #deleteNav
+    #deleteCheggNav
     driver.execute_script('''
     function getElementByXpath(path) {
         return document.evaluate(path, document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
@@ -159,18 +174,11 @@ def takeScreenshot():
     content.style.bottom = 0;
     ''')
 
-    # try:
-    #     if driver.find_element(By.CLASS_NAME, "copyright"):
-    #         print("book does exist")
-    # except:
-    #     print("Nope")
-    #
-    # #frame = driver.find_element(By.XPATH, '/html/body/div/div/section[3]/section/iframe')
-    #driver.switch_to.frame(driver.find_element(By.XPATH, '/html/body/div/div/section[3]/section/iframe'))
-    #height = driver.find_element(By.TAG_NAME, "body").size["height"]
-    currPage = 0
+    currPage = startingPage
     driver.switch_to.frame(driver.find_element(By.XPATH, "/html/body/div/div/section[2]/section/iframe"))
     input("ARE YOU READY TO PRINT ALL PAGES?")
+
+    # While there is a next page button
     while (driver.execute_script("""
     var allButtons = document.querySelectorAll("button");
     return allButtons[allButtons.length-1].classList.contains("next");
@@ -179,7 +187,7 @@ def takeScreenshot():
         height = driver.find_element(By.TAG_NAME, "main").size["height"]
         width = driver.find_element(By.TAG_NAME, "main").size["width"]
 
-
+        #make Buttons invisible, cannot delete to go to next page
         driver.execute_script("""
         var allButtons = document.querySelectorAll("button");
         for (var y = 0; y < allButtons.length; y++){
@@ -188,52 +196,32 @@ def takeScreenshot():
         }
         """)
 
-        print(height)
-        #
-        # try:
-        #     if driver.find_element(By.CLASS_NAME, "copyright"):
-        #         print(driver.find_element(By.CLASS_NAME, "copyright").size)
-        # except:
-        #     print("Nope")
-
-        fullpage_screenshot(driver, "bkpg"+str(currPage)+".png", height)
+        fullpage_screenshot(driver, str(currPage)+"temp.png", height, bookName)
         currPage += 1
 
-
-    # image = driver.find_element(By.CLASS_NAME, 'copyright').screenshot_as_png
-    # imageStream = io.BytesIO(image)
-    # im = Image.open(imageStream)
-    # rgb_im = im.convert('RGB')
-    # rgb_im.save('audacious.jpg')
-
-def getSession():
-
-    options = Options()
-    ua = UserAgent()
-    userAgent = ua.random
-    print(userAgent)
-    options.add_argument(f'user-agent={userAgent}')
-    options.add_experimental_option("excludeSwitches", ["enable-automation"])
-    options.add_experimental_option('useAutomationExtension', False)
-    options.add_argument('--disable-blink-features=AutomationControlled')
-    driver = webdriver.Chrome(chrome_options=options)
-
-    url = driver.command_executor._url  # "http://127.0.0.1:60622/hub"
-    session_id = driver.session_id  # '4e167f26-dc1d-4f51-a207-f761eaf73c31'
-
-    browserId = {
-        "url": url,
-        "session_id": session_id
-    }
-    json_object = json.dumps(browserId, indent=4)
-    with open("browserId.json", "w") as outfile:
-        outfile.write(json_object)
-    driver.get("https://google.com")
-    options.add_experimental_option("detach", True)
-    print("done")
-
-
-
-#getSession()
-#url, session_id = "http://localhost:49853", "69b7e8f20062cbc67717f69e99e98c2f"
-takeScreenshot()
+# !TODO DELETE FUNCTION
+# def getSession():
+#
+#     options = Options()
+#     ua = UserAgent()
+#     userAgent = ua.random
+#     print(userAgent)
+#     options.add_argument(f'user-agent={userAgent}')
+#     options.add_experimental_option("excludeSwitches", ["enable-automation"])
+#     options.add_experimental_option('useAutomationExtension', False)
+#     options.add_argument('--disable-blink-features=AutomationControlled')
+#     driver = webdriver.Chrome(chrome_options=options)
+#
+#     url = driver.command_executor._url  # "http://127.0.0.1:60622/hub"
+#     session_id = driver.session_id  # '4e167f26-dc1d-4f51-a207-f761eaf73c31'
+#
+#     browserId = {
+#         "url": url,
+#         "session_id": session_id
+#     }
+#     json_object = json.dumps(browserId, indent=4)
+#     with open("browserId.json", "w") as outfile:
+#         outfile.write(json_object)
+#     driver.get("https://google.com")
+#     options.add_experimental_option("detach", True)
+#     print("done")
