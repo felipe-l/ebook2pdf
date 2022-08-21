@@ -1,18 +1,22 @@
-import createPDF
-import cutImageToPDF
-import downloadBook
-
 BOOK_NAME = "myBook"
 startingPage = 1
 
-downloadBook.takeScreenshot(BOOK_NAME, startingPage)
-print("BOOK DOWNLOADED")
+def bookToPdf(bookName, startingPage):
+    import createPDF
+    import cutImageToPDF
+    import downloadBook
 
-mergeImages = cutImageToPDF.gatherImageNames(BOOK_NAME)
-print(mergeImages)
-input("Start Cropping above images")
-cutImageToPDF.cutImages(mergeImages, BOOK_NAME)
+    downloadBook.takeScreenshot(BOOK_NAME, startingPage)
+    print("BOOK DOWNLOADED")
 
-imageNames = createPDF.sortImageNames(BOOK_NAME)
-input("Press Enter to create PDF")
-createPDF = createPDF.createPDF(imageNames, BOOK_NAME)
+    mergeImages = cutImageToPDF.gatherImageNames(BOOK_NAME)
+    print(mergeImages)
+    input("Start Cropping above images")
+    cutImageToPDF.cutImages(mergeImages, BOOK_NAME)
+
+    imageNames = createPDF.sortImageNames(BOOK_NAME)
+    input("Press Enter to create PDF")
+    createPDF = createPDF.createPDF(imageNames, BOOK_NAME)
+
+if __name__ == "__main__":
+    bookToPdf(BOOK_NAME, startingPage)
